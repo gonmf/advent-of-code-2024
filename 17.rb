@@ -28,7 +28,7 @@ input.each do |line|
   end
 end
 
-def run_program(registers, prog, goal)
+def simple_program(registers, prog, goal)
   isp = 0
 
   outputs = []
@@ -39,8 +39,7 @@ def run_program(registers, prog, goal)
     if opcode == 0 # adv
       numerator = registers[0]
       combo_operand = prog[isp + 1] < 4 ? prog[isp + 1] : registers[prog[isp + 1] - 4]
-      denominator = 2.pow(combo_operand)
-      registers[0] = (numerator / denominator).truncate
+      registers[0] = numerator >> combo_operand
 
       isp += 2
       next
@@ -55,7 +54,7 @@ def run_program(registers, prog, goal)
 
     if opcode == 2 # bst
       combo_operand = prog[isp + 1] < 4 ? prog[isp + 1] : registers[prog[isp + 1] - 4]
-      registers[1] = combo_operand % 8
+      registers[1] = combo_operand & 7
 
       isp += 2
       next
@@ -80,7 +79,7 @@ def run_program(registers, prog, goal)
 
     if opcode == 5 # out
       combo_operand = prog[isp + 1] < 4 ? prog[isp + 1] : registers[prog[isp + 1] - 4]
-      val = combo_operand % 8
+      val = combo_operand & 7
       if !goal.nil? && (goal[outputs.size].nil? || goal[outputs.size] != val)
         return nil
       end
@@ -94,8 +93,7 @@ def run_program(registers, prog, goal)
     if opcode == 6 # bdv
       numerator = registers[0]
       combo_operand = prog[isp + 1] < 4 ? prog[isp + 1] : registers[prog[isp + 1] - 4]
-      denominator = 2.pow(combo_operand)
-      registers[1] = (numerator / denominator).truncate
+      registers[1] = numerator >> combo_operand
 
       isp += 2
       next
@@ -104,8 +102,7 @@ def run_program(registers, prog, goal)
     if opcode == 7 # cdv
       numerator = registers[0]
       combo_operand = prog[isp + 1] < 4 ? prog[isp + 1] : registers[prog[isp + 1] - 4]
-      denominator = 2.pow(combo_operand)
-      registers[2] = (numerator / denominator).truncate
+      registers[2] = numerator >> combo_operand
 
       isp += 2
       next
@@ -119,4 +116,44 @@ def run_program(registers, prog, goal)
   outputs
 end
 
-puts run_program(registers, prog, nil).map(&:to_s).join(',')
+puts simple_program(registers, prog, nil).map(&:to_s).join(',')
+
+# program 2
+
+def disasm_program(a, output = [])
+  b = a & 7
+  b = b ^ 2
+  c = a >> b
+  b = b ^ c
+  b = b ^ 3
+  a = a >> 3
+
+  output.push(b & 7)
+
+  if a == 0
+    output
+  else
+    disasm_program(a, output)
+  end
+end
+
+def search(goal, depth, sum, solutions)
+  (0..7).to_a.each do |v1|
+    new_sum = (sum << 3) + v1
+
+    result = disasm_program(new_sum)
+
+    if result == goal.last(depth + 1)
+      if result == goal
+        solutions.push(new_sum)
+      else
+        search(goal, depth + 1, new_sum, solutions)
+      end
+    end
+  end
+end
+
+solutions = []
+search(prog, 0, 0, solutions)
+
+puts solutions.min
