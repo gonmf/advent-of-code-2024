@@ -2,6 +2,8 @@ require 'set'
 
 input = File.read('18.input').split("\n").map(&:strip)
 
+# problem 1
+
 @applied_bytes = Set.new
 @remainder_bytes = Set.new
 
